@@ -8,15 +8,10 @@ import { cn } from "@/lib/utils"
 
 interface ProjectSidebarProps {
   isOpen: boolean
-  projectTitle: string
   onClose: () => void
 }
 
-export function ProjectSidebar({
-  isOpen,
-  projectTitle,
-  onClose,
-}: ProjectSidebarProps) {
+export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
   return (
     <aside
       aria-hidden={!isOpen}
@@ -26,7 +21,7 @@ export function ProjectSidebar({
       )}
     >
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
-        <span className="truncate text-sm font-medium">{projectTitle}</span>
+        <span className="truncate text-sm font-medium">Projects</span>
         <Button
           variant="ghost"
           size="icon-sm"
@@ -45,8 +40,8 @@ export function ProjectSidebar({
           <TabsTrigger value="templates" className="flex-1">
             Templates
           </TabsTrigger>
-          <TabsTrigger value="layers" className="flex-1">
-            Layers
+          <TabsTrigger value="shared" className="flex-1">
+            Shared
           </TabsTrigger>
         </TabsList>
         <TabsContent
@@ -56,10 +51,10 @@ export function ProjectSidebar({
           No templates yet
         </TabsContent>
         <TabsContent
-          value="layers"
+          value="shared"
           className="flex flex-1 items-center justify-center text-sm text-muted-foreground"
         >
-          No layers yet
+          No shared projects yet
         </TabsContent>
       </Tabs>
 
