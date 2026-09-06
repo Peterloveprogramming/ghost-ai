@@ -6,11 +6,10 @@ import { EditorNavbar } from "@/components/editor/editor-navbar"
 import { ProjectSidebar } from "@/components/editor/project-sidebar"
 
 interface EditorShellProps {
-  projectTitle: string
   children: React.ReactNode
 }
 
-export function EditorShell({ projectTitle, children }: EditorShellProps) {
+export function EditorShell({ children }: EditorShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
@@ -21,7 +20,6 @@ export function EditorShell({ projectTitle, children }: EditorShellProps) {
       />
       <ProjectSidebar
         isOpen={isSidebarOpen}
-        projectTitle={projectTitle}
         onClose={() => setIsSidebarOpen(false)}
       />
       <div className="flex flex-1">{children}</div>

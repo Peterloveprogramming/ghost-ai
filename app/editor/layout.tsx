@@ -1,5 +1,5 @@
 import { EditorShell } from "@/components/editor/editor-shell"
 
 export default function EditorLayout({ children }: LayoutProps<"/editor">) {
-  return <EditorShell projectTitle="Untitled Project">{children}</EditorShell>
+  return <EditorShell>{children}</EditorShell>
 }
