@@ -21,7 +21,7 @@ Requirements:
 - sidebar should float above the editor canvas. 
 - Opening it should not have pushed the page content. 
 - Slides in from the left 
-- Accepts isOpen prop
+- Accepts isOpen prop and onClose prop
 - The with project title + close button
 - both tabs show empty placeholders state. 
 - Fullwidth new project buttons at the bottom with plus icon

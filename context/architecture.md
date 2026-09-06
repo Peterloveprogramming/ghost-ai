@@ -17,6 +17,7 @@
 
 ## System Boundaries
 
+- `proxy.ts` — Root request proxy (Next.js 16's renamed middleware). Runs `clerkMiddleware`; enforces authentication on every route except the public auth paths.
 - `app/api` — Authenticated request handlers: input validation, ownership checks, task triggering, and persistence.
 - `trigger` — Long-running background jobs: AI design generation and spec generation.
 - `lib` — Shared infrastructure: Prisma client, access control helpers, and utilities.

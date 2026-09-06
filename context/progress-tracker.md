@@ -9,7 +9,7 @@ change.
 
 ## Current Goal
 
-- Continue building the editor chrome per 03-editor.md, then extend it in the chapters that follow.
+- Auth is wired (04-auth.md). Next: the project data layer (Prisma models for projects/collaborators) so `/editor` can source a real project instead of the hardcoded title, then the collaborative canvas.
 
 ## Completed
 
@@ -25,6 +25,18 @@ change.
   - `app/editor/layout.tsx` — new route segment `/editor`. Server component; renders `EditorShell` with `projectTitle="Untitled Project"` (hardcoded — there's no project data layer yet, see Open Questions) wrapping `children`.
   - `app/editor/page.tsx` — placeholder page ("Canvas coming soon") so the layout has something to wrap; this is not the real canvas feature, just enough to prove composition works.
   - Verified: `npx tsc --noEmit`, `npm run lint`, `npm run build` all pass (build required one pass to generate the `LayoutProps<"/editor">` route type before `tsc` would accept it). Ran the dev server and curled `/editor` directly (no temporary page edits needed this time) — confirmed navbar, closed sidebar (`-translate-x-full`, `panel-left-open`), tab/button placeholder text, and the page's placeholder text all render with no server console errors.
+- 04-auth.md — wired Clerk (`@clerk/nextjs` v7.9) into the app:
+  - Installed `@clerk/ui` (v1.32) for the `dark` theme (`@clerk/ui/themes`). The spec's original wording (`Cloak` component, `clerks/ui/themes` path, "existing sign-in/sign-up envs") was inaccurate — corrected with the user's approval; see 04-auth.md "Implementation notes".
+  - `app/layout.tsx` — `<ClerkProvider>` now wraps `children` **inside `<body>`** (required for v7). `appearance={{ theme: dark, variables: {...} }}` where every variable value is a `var(--token)` reference to an existing `app/globals.css` token (`--primary`, `--card`, `--foreground`, `--muted-foreground`, `--input`, `--border`, `--destructive`, `--ring`, `--radius`, `--font-geist-sans`) — no hard-coded colors. Stale `metadata` ("Create Next App") left as-is (not in scope).
+  - `proxy.ts` (project root, NOT `middleware.ts` — Next 16 renamed the convention) — `export default clerkMiddleware(...)`. Public routes = the two env values (`NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`, added to `.env.local`); every other path calls `await auth.protect()`. Used a plain pathname check rather than `createRouteMatcher` (v7 marks it deprecated). Standard Clerk `config.matcher` (skips `_next`/static, always runs for `/api`).
+  - `components/auth/auth-panel.tsx` — server component. Two-panel layout: left `<aside>` (`hidden lg:flex`, so small screens get the form only) with a compact `Sparkles` logo + "Ghost AI", one line of copy, and a plain `<ul>` feature list (no card, no gradient, no hero). Right `<main>` centers its children. Tokens only.
+  - `app/sign-in/[[...sign-in]]/page.tsx` and `app/sign-up/[[...sign-up]]/page.tsx` — catch-all routes rendering `<SignIn />` / `<SignUp />` inside `<AuthPanel>`.
+  - `app/page.tsx` — now `async`; `await auth()` → redirect authenticated users to `/editor`, everyone else to `/sign-in`. (Proxy also protects `/`, so unauthenticated hits are already bounced to sign-in before this runs; the explicit check covers the authenticated → `/editor` case.)
+  - `components/editor/editor-navbar.tsx` — added `<UserButton />` to the previously-empty right section. No customization; inherits appearance from the provider. File was already `"use client"`.
+  - Verified: `npx tsc --noEmit`, `npm run lint`, `npm run build` all pass. Dev server + curl: `/sign-in` → 200 with the two-panel HTML and Clerk/`@clerk/ui` scripts, `x-clerk-auth-status: signed-out`; `/` → 307 to `/sign-in?redirect_url=...`; `/editor` → 307 to `/sign-in?redirect_url=...`. No server console errors (only a telemetry line).
+- 04-auth.md UI polish (follow-up, from a reference screenshot):
+  - Fixed a scaffolding bug in `app/globals.css` `@theme inline`: `--font-sans: var(--font-sans)` was self-referential, so Tailwind's `font-sans` / `--default-font-family` resolved to the system stack instead of Geist. Repointed `--font-sans` → `var(--font-geist-sans)` and `--font-heading` likewise, and added `--font-mono: var(--font-geist-mono)`. Confirmed in compiled CSS: `--default-font-family: var(--font-geist-sans)`. This is the ui-context.md "base body uses Geist Sans" rule; it now actually applies app-wide.
+  - `components/auth/auth-panel.tsx` reworked to match the screenshot: true 50/50 split (`w-1/2` aside + `flex-1` main; aside still `hidden lg:flex` so small screens are form-only). Left panel is now a distinct surface — `bg-card` (`--bg-surface`) with a brand-accent radial wash (`radial-gradient(... var(--accent) ...)`, the `rgba(0,200,212,0.12)` teal-dim token) so it reads apart from the near-black page. Content: teal logo chip (`bg-primary` + `Ghost` icon), large `text-4xl` heading "Design systems at the speed of thought.", muted lead paragraph, and a 3-item feature list — each row a teal-tinted `rounded-xl bg-accent` icon chip (`Sparkles` / `Share2` / `FileText` in `text-primary`) + title + description. All colors via tokens, no hex.
 
 ## In Progress
 
@@ -32,18 +44,23 @@ change.
 
 ## Next Up
 
-- Pick the next feature spec — no `04-*.md` exists yet in `context/feature-specs/`. `/editor` is currently a standalone placeholder route with a hardcoded project title and no real canvas — once auth/projects/Prisma exist, decide whether `/editor` becomes the real project workspace route (per `project-overview.md`'s "user enters the project workspace") or gets replaced by a dynamic route (e.g. project-scoped), and thread the real project title through instead of the hardcoded one. Also still open: wiring the sidebar's "New Project" button and the dialog pattern into a real dialog.
+- Project data layer: add Prisma + the `Project` / collaborator models (architecture.md's ownership model), then decide whether `/editor` becomes the real workspace route or a project-scoped dynamic route, and thread a real project title into `app/editor/layout.tsx` instead of the hardcoded `"Untitled Project"`. Still open from 03-editor.md: wiring the sidebar's "New Project" button and the dialog pattern into a real dialog.
 
 ## Open Questions
 
 - `--primary-foreground` and `--accent-foreground` (in the 02-theme-tokens.md mapping) have no direct ui-context.md counterpart — ui-context.md defines surface/text/accent roles but not "text on an accent-colored surface". Proposed values (`#08080a` and `#00c8d4` respectively) are a judgment call pending design confirmation.
 - 03-editor.md says "both tabs show empty placeholder state" for `ProjectSidebar` but never names the tabs. Used "Templates" and "Layers" as placeholder labels — "Templates" ties to the starter-template import feature in `project-overview.md`; "Layers" is an unconfirmed guess at a second grouping. Revisit/confirm the real tab set (and whether "Layers" is even a concept in this product) before wiring real content into them.
-- `app/editor/layout.tsx` hardcodes `projectTitle="Untitled Project"` — there's no auth/project data layer yet to source a real title from. Revisit once project routes and Prisma models exist (see architecture.md's project ownership model).
+- `app/editor/layout.tsx` hardcodes `projectTitle="Untitled Project"` — auth now exists but there's still no project data layer to source a real title from. Revisit once project routes and Prisma models exist (see architecture.md's project ownership model).
+- 04-auth.md's `<UserButton />` has no `afterSignOutUrl` set — Clerk defaults to `/`, which the proxy then bounces to `/sign-in`. Fine for now; set it explicitly if a dedicated post-logout landing is wanted.
+- `app/layout.tsx` `metadata` still says "Create Next App" / "Generated by create next app" — left untouched (out of 04-auth.md scope). Worth fixing in a later pass.
+- Clerk appearance override maps `colorBackground` → `var(--card)` and `colorInput` → `var(--input)`. `--input` is shadcn's border/input token (`#2a2a30`), used here as Clerk's input surface — visually reasonable on the dark theme but revisit if inputs read too light/dark once seen against a real form.
 
 ## Architecture Decisions
 
 - shadcn initialized with the `base-nova` preset and `@base-ui/react` primitives (not Radix) — this was already the state of the repo before this session; kept as-is since `components.json` matched shadcn's own defaults.
 - `EditorNavbar` and `ProjectSidebar` are controlled components (sidebar open/closed state, project title, and close/toggle handlers are all props) rather than managing their own state — they're described in 03-editor.md as reusable chrome that later chapters will extend, and the toggle button lives in the navbar while the `isOpen` consumer is the sidebar, so the state has to be owned by whatever future component composes both.
+- Auth is enforced at the proxy (`proxy.ts`, `auth.protect()` on all non-public routes) AND `/` re-checks with `await auth()` for its own redirect. Per-route/per-mutation checks in `app/api`, Server Actions, and Liveblocks token issuance are still required (architecture.md invariant 3) — the proxy is not the only gate.
+- `@clerk/nextjs` v7 pairs with `@clerk/ui` for themes (not `@clerk/themes`, which is the v6 / Core 2 package). `import { dark } from "@clerk/ui/themes"`.
 
 ## Session Notes
 
