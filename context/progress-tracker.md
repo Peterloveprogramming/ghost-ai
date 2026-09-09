@@ -9,7 +9,7 @@ change.
 
 ## Current Goal
 
-- Editor home + project dialogs are wired against mock data (05-project-dialogue.md). Next: the project data layer (Prisma models for projects/collaborators) so `/editor` can source real projects instead of `lib/mock-projects.ts`, then the collaborative canvas.
+- Prisma project data models + client singleton + first migration are in place (06-prisma.md). Next: replace `lib/mock-projects.ts` / `hooks/use-project-dialogs.ts`'s in-memory list with real reads and wire the dialog submits to `app/api` route handlers (auth + ownership at the mutation boundary), then the collaborative canvas.
 
 ## Completed
 
@@ -52,13 +52,24 @@ change.
   - Follow-up (2026-09-08): removed the `Templates` sidebar tab per the user — sidebar now has just `Projects` and `Shared`. Re-ran `npx tsc --noEmit`, `npm run lint`, `npm run build`: all pass.
   - Follow-up (2026-09-08): project creation now uses a UUID-backed ID suffix instead of `current.length`, preventing ID reuse after deletions while preserving the slug prefix and untitled fallback. Re-ran `npx tsc --noEmit` and `npm run lint`: both pass.
 
+- 06-prisma.md — added the project data models, the Prisma client singleton, and the first migration:
+  - Installed the runtime deps the spec assumed were already present but were not (`package.json` only had the `prisma` CLI): `@prisma/client@7.10.0`, `@prisma/adapter-pg@7.10.0`, `pg`, plus `@prisma/extension-accelerate` (needed for the Accelerate branch in `lib/prisma.ts`). This is Prisma 7 (`prisma-client` generator, query compiler, driver adapters mandatory).
+  - `prisma/models/project.prisma` — new multi-file schema model file (`prisma7.config.ts` already sets `schema: "prisma/"`; `prisma/schema.prisma` keeps only the generator + `postgresql` datasource). Contains:
+    - `enum ProjectStatus { DRAFT ARCHIVED }`.
+    - `Project` — `id String @id @default(uuid())`, `ownerId String` (Clerk user ID), `name String`, `description String?`, `status ProjectStatus @default(DRAFT)`, `canvasJsonPath String?` (future Vercel Blob reference per architecture.md storage model), `createdAt DateTime @default(now())`, `updatedAt DateTime @updatedAt`, `collaborators ProjectCollaborator[]`. Indexes: `@@index([ownerId])`, `@@index([createdAt])`.
+    - `ProjectCollaborator` — `id String @id @default(uuid())`, `projectId String`, `email String`, `createdAt DateTime @default(now())`, `project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)`. `@@unique([projectId, email])`; indexes `@@index([email])`, `@@index([projectId, createdAt])`.
+    - No fields beyond what the spec listed + Prisma-required `id`/relation scalars. `status` carries `@default(DRAFT)` (attribute, not an extra field) since DRAFT is the initial lifecycle state.
+  - `lib/prisma.ts` — cached singleton. `createPrismaClient()` reads `process.env.DATABASE_URL` (throws if unset); if it starts with `prisma+postgres://` → `new PrismaClient({ accelerateUrl }).$extends(withAccelerate())`, otherwise → `new PrismaClient({ adapter: new PrismaPg({ connectionString }) })`. Instance cached on `globalThis.prisma` unless `NODE_ENV === "production"`, so `next dev` hot reloads reuse one client. Exports `export const prisma`. Client imported from `@/app/generated/prisma/client` (generator `output` is `app/generated/prisma`, which is gitignored; entry file is `client.ts`, there is no `index.ts`).
+  - Migration `prisma/migrations/20260909035142_init/` — created + applied with `prisma migrate dev --name init` against the real database in `.env.local` (`postgres://…@pooled.db.prisma.io`), passed as an inline `DATABASE_URL` override because `prisma7.config.ts` loads `.env` (via `dotenv/config`), whose `DATABASE_URL` points at a non-running local `prisma dev` server (`prisma+postgres://localhost:51213`). SQL matches the schema: enum, both tables, all four indexes, the unique index, and the `ON DELETE CASCADE` FK. Ran `prisma generate` afterwards.
+  - Verified: `npx tsc --noEmit`, `npm run lint`, `npm run build` all pass. `prisma migrate status` reports the DB in sync.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-- Project data layer: add Prisma + the `Project` / collaborator models (architecture.md's ownership model), then replace `lib/mock-projects.ts` and `hooks/use-project-dialogs.ts`'s in-memory list with real reads, wire the dialog submits to `app/api` route handlers (auth + ownership at the mutation boundary), and decide whether `/editor` becomes the real workspace route or a project-scoped dynamic route.
+- Project data layer wiring: replace `lib/mock-projects.ts` and `hooks/use-project-dialogs.ts`'s in-memory list with real reads via `lib/prisma.ts`, wire the dialog submits to `app/api` route handlers (auth + ownership at the mutation boundary), and decide whether `/editor` becomes the real workspace route or a project-scoped dynamic route.
 - Starter-template import (`project-overview.md`) still has no surface — the `Templates` sidebar tab was removed; give it a dedicated entry point when that feature is built.
 
 ## Open Questions
@@ -70,6 +81,8 @@ change.
 - 04-auth.md's `<UserButton />` has no `afterSignOutUrl` set — Clerk defaults to `/`, which the proxy then bounces to `/sign-in`. Fine for now; set it explicitly if a dedicated post-logout landing is wanted.
 - `app/layout.tsx` `metadata` still says "Create Next App" / "Generated by create next app" — left untouched (out of 04-auth.md scope). Worth fixing in a later pass.
 - Clerk appearance override maps `colorBackground` → `var(--card)` and `colorInput` → `var(--input)`. `--input` is shadcn's border/input token (`#2a2a30`), used here as Clerk's input surface — visually reasonable on the dark theme but revisit if inputs read too light/dark once seen against a real form.
+- `DATABASE_URL` is defined in two places with different values: `.env.local` (`postgres://…@pooled.db.prisma.io`, the real DB — Next.js loads `.env.local` first, so this is what `lib/prisma.ts` uses at runtime, via the `@prisma/adapter-pg` branch) and `.env` (`prisma+postgres://localhost:51213`, a local `prisma dev` server that is not running). The Prisma CLI loads `.env` through `prisma7.config.ts`'s `import "dotenv/config"`, so `prisma migrate` / `prisma studio` need an inline `DATABASE_URL=…pooled.db.prisma.io…` override (or a running `prisma dev`) until the two are reconciled. Left as-is for 06-prisma.md (spec only asked to run the migration; `prisma7.config.ts` is Prisma-generated). Options to resolve later: point `.env`'s `DATABASE_URL` at the real DB, or have `prisma7.config.ts` also load `.env.local`.
+- 06-prisma.md's `lib/prisma.ts` branch says `prisma+postgres://` → Accelerate, but the only `prisma+postgres://` URL present is a *local* `prisma dev` server, not Accelerate. Implemented the branch exactly as written (`accelerateUrl` + `withAccelerate()`); revisit if local `prisma dev` is meant to be a supported runtime target (it would need the adapter path, not Accelerate).
 
 ## Architecture Decisions
 
