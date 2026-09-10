@@ -13,13 +13,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { useProjectDialogs } from "@/hooks/use-project-dialogs"
+import {
+  useProjectActions,
+  type ProjectActions,
+  type SidebarProject,
+} from "@/hooks/use-project-actions"
 
-type ProjectDialogsValue = ReturnType<typeof useProjectDialogs>
+const ProjectDialogsContext = createContext<ProjectActions | null>(null)
 
-const ProjectDialogsContext = createContext<ProjectDialogsValue | null>(null)
-
-export function useProjectDialogsContext(): ProjectDialogsValue {
+export function useProjectDialogsContext(): ProjectActions {
   const value = useContext(ProjectDialogsContext)
   if (!value) {
     throw new Error(
@@ -29,8 +31,18 @@ export function useProjectDialogsContext(): ProjectDialogsValue {
   return value
 }
 
-export function ProjectDialogsProvider({ children }: { children: ReactNode }) {
-  const value = useProjectDialogs()
+interface ProjectDialogsProviderProps {
+  children: ReactNode
+  ownedProjects: SidebarProject[]
+  sharedProjects: SidebarProject[]
+}
+
+export function ProjectDialogsProvider({
+  children,
+  ownedProjects,
+  sharedProjects,
+}: ProjectDialogsProviderProps) {
+  const value = useProjectActions({ ownedProjects, sharedProjects })
 
   return (
     <ProjectDialogsContext.Provider value={value}>
@@ -46,7 +58,7 @@ function CreateProjectDialog() {
   const {
     openDialog,
     name,
-    slugPreview,
+    roomIdPreview,
     isSubmitting,
     setName,
     closeDialog,
@@ -82,10 +94,8 @@ function CreateProjectDialog() {
               disabled={isSubmitting}
             />
             <p className="text-xs text-muted-foreground">
-              Slug:{" "}
-              <span className="font-mono text-foreground">
-                {slugPreview || "your-project"}
-              </span>
+              Room ID:{" "}
+              <span className="font-mono text-foreground">{roomIdPreview}</span>
             </p>
           </div>
           <DialogFooter>

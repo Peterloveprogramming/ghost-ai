@@ -28,8 +28,16 @@ const isPublicRoute = (pathname: string) =>
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   )
 
+// `/api` route handlers authenticate themselves and return a JSON `401` for
+// unauthenticated callers (see context/feature-specs/07-api.md). Letting the
+// proxy call `auth.protect()` on them instead would answer with a `404` or a
+// sign-in redirect, so API paths are skipped here and guarded at the handler.
+const isApiRoute = (pathname: string) =>
+  pathname === "/api" || pathname.startsWith("/api/")
+
 export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request.nextUrl.pathname)) {
+  const { pathname } = request.nextUrl
+  if (!isPublicRoute(pathname) && !isApiRoute(pathname)) {
     await auth.protect()
   }
 })

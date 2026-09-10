@@ -5,12 +5,19 @@ import { useEffect, useRef, useState } from "react"
 import { EditorNavbar } from "@/components/editor/editor-navbar"
 import { ProjectDialogsProvider } from "@/components/editor/project-dialogs"
 import { ProjectSidebar } from "@/components/editor/project-sidebar"
+import type { SidebarProject } from "@/hooks/use-project-actions"
 
 interface EditorShellProps {
   children: React.ReactNode
+  ownedProjects: SidebarProject[]
+  sharedProjects: SidebarProject[]
 }
 
-export function EditorShell({ children }: EditorShellProps) {
+export function EditorShell({
+  children,
+  ownedProjects,
+  sharedProjects,
+}: EditorShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const toggleButtonRef = useRef<HTMLButtonElement>(null)
   const wasSidebarOpen = useRef(false)
@@ -23,7 +30,10 @@ export function EditorShell({ children }: EditorShellProps) {
   }, [isSidebarOpen])
 
   return (
-    <ProjectDialogsProvider>
+    <ProjectDialogsProvider
+      ownedProjects={ownedProjects}
+      sharedProjects={sharedProjects}
+    >
       <div className="flex min-h-screen flex-col bg-background">
         <EditorNavbar
           isSidebarOpen={isSidebarOpen}

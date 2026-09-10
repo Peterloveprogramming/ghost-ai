@@ -5,7 +5,7 @@ import { Pencil, Plus, Trash2, X } from "lucide-react"
 import { useProjectDialogsContext } from "@/components/editor/project-dialogs"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { MockProject } from "@/hooks/use-project-dialogs"
+import type { SidebarProject } from "@/hooks/use-project-actions"
 import { cn } from "@/lib/utils"
 
 interface ProjectSidebarProps {
@@ -89,10 +89,10 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
 }
 
 interface ProjectListProps {
-  projects: MockProject[]
+  projects: SidebarProject[]
   emptyLabel: string
-  onRename?: (project: MockProject) => void
-  onDelete?: (project: MockProject) => void
+  onRename?: (project: SidebarProject) => void
+  onDelete?: (project: SidebarProject) => void
 }
 
 function ProjectList({
@@ -121,7 +121,7 @@ function ProjectList({
           <span className="min-w-0 flex-1 truncate text-sm text-foreground">
             {project.name}
           </span>
-          {showActions && project.access === "owner" && (
+          {showActions && (
             <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               <Button
                 variant="ghost"

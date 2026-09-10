@@ -17,7 +17,7 @@
 
 ## System Boundaries
 
-- `proxy.ts` — Root request proxy (Next.js 16's renamed middleware). Runs `clerkMiddleware`; enforces authentication on every route except the public auth paths.
+- `proxy.ts` — Root request proxy (Next.js 16's renamed middleware). Runs `clerkMiddleware`; calls `auth.protect()` on every page route except the public auth paths. `/api/*` routes are wrapped by `clerkMiddleware` (so `auth()` works in the handler) but not `protect()`ed at the proxy — each API route handler enforces auth itself and returns a JSON `401`.
 - `app/api` — Authenticated request handlers: input validation, ownership checks, task triggering, and persistence.
 - `trigger` — Long-running background jobs: AI design generation and spec generation.
 - `lib` — Shared infrastructure: Prisma client, access control helpers, and utilities.
@@ -55,3 +55,4 @@
 3. Auth and ownership are enforced at every mutation boundary.
 4. Client components are used only where browser interactivity or real-time state requires them.
 5. The canvas schema must remain consistent between user-created content and imported templates.
+6. A project's database `id` and its Liveblocks room id are the same value. On create the client derives it as `<slugified name>-<short suffix>` and sends it to `POST /api/projects`; the schema's uuid default only applies when no id is supplied.
