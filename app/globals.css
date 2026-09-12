@@ -22,6 +22,8 @@
     --color-chart-2: var(--chart-2);
     --color-chart-1: var(--chart-1);
     --color-ring: var(--ring);
+    --color-ai: var(--ai);
+    --color-ai-foreground: var(--ai-foreground);
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
@@ -67,6 +69,8 @@
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
+    --ai: #6457f9;
+    --ai-foreground: #8b82ff;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -102,6 +106,8 @@
     --border: #2a2a30;
     --input: #2a2a30;
     --ring: #00c8d4;
+    --ai: #6457f9;
+    --ai-foreground: #8b82ff;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);

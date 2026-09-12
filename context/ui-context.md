@@ -69,13 +69,23 @@ radius increases with surface depth: smaller for inner elements, larger for oute
 
 ## Layout Patterns
 
-- [Pattern — e.g. Editor: full-viewport split with
-  left sidebar, center canvas, right sidebar]
-- [Pattern — e.g. Sidebars: fixed width with border separator]
-- [Pattern — e.g. Modals: centered overlay with backdrop blur]
-- [Pattern — e.g. Navbar: top bar with bottom border]
+- Editor shell: full-viewport (`h-dvh`, `overflow-hidden`) column — fixed
+  `h-14` navbar on top, then a `flex-1 min-h-0` row holding the routed content.
+- Navbar: top bar, `bg-card` with `border-b`. Left group = sidebar toggle +
+  (in a room) project name with a "Workspace" sub-label. Right group =
+  room-only actions (Share, AI-panel toggle) + Clerk `UserButton`.
+- Project sidebar: floating rounded card (`fixed`, `m-3`, `rounded-2xl`,
+  `bg-popover`), slides in/out via `translate-x`. Mobile gets a `bg-black/50`
+  scrim; on `md+` the content row pads left (`md:pl-80`) so nothing overlaps.
+- Workspace panels: the canvas and the right AI panel are floating rounded
+  cards (`rounded-3xl`, `border-border`, `bg-card`) with a consistent `12px`
+  (`p-3` / `m-3`) gutter. Canvas fills remaining space; AI panel is `w-80`
+  and toggled from the navbar.
+- Modals / dialogs: shadcn `Dialog` primitive, centered overlay.
 
 ## Icons
 
-[e.g. Lucide React. Stroke-based icons only. Sizes:
-h-4 w-4 for inline, h-5 w-5 for buttons.]
+Lucide React, stroke-based only. `size-4` (h-4 w-4) inline and inside buttons
+(the shadcn `Button` auto-sizes bare `svg` children to `size-4`); `size-5`–
+`size-6` for standalone icon chips / empty-state badges. AI-related icons use
+the `text-ai-foreground` token.
