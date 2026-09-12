@@ -64,9 +64,9 @@ export function useProjectActions({
   sharedProjects,
 }: UseProjectActionsArgs): ProjectActions {
   const router = useRouter()
-  const params = useParams<{ projectId?: string }>()
-  const activeProjectId =
-    typeof params.projectId === "string" ? params.projectId : null
+  const params = useParams<{ roomId?: string }>()
+  const activeRoomId =
+    typeof params.roomId === "string" ? params.roomId : null
 
   const [openDialog, setOpenDialog] = useState<ProjectDialogKind | null>(null)
   const [targetProject, setTargetProject] = useState<SidebarProject | null>(null)
@@ -166,7 +166,7 @@ export function useProjectActions({
 
       setOpenDialog(null)
       setTargetProject(null)
-      if (activeProjectId === target.id) {
+      if (activeRoomId === target.id) {
         router.push("/editor")
       } else {
         router.refresh()
@@ -174,7 +174,7 @@ export function useProjectActions({
     } finally {
       setIsSubmitting(false)
     }
-  }, [targetProject, isSubmitting, activeProjectId, router])
+  }, [targetProject, isSubmitting, activeRoomId, router])
 
   return {
     openDialog,
