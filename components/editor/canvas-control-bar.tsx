@@ -1,25 +1,32 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { Minus, Plus, Redo2, Scan, Undo2 } from "lucide-react"
+import { AlertCircle, Check, Loader2, Minus, Plus, Redo2, Save, Scan, Undo2 } from "lucide-react"
 import type { Edge, Node, ReactFlowInstance } from "@xyflow/react"
 
+import type { CanvasSaveStatus } from "@/hooks/use-canvas-save"
 import { cn } from "@/lib/utils"
 
 const ZOOM_DURATION = 200
 
 interface CanvasControlBarProps<NodeType extends Node, EdgeType extends Edge> {
   reactFlowInstance: ReactFlowInstance<NodeType, EdgeType> | null
+  saveStatus: CanvasSaveStatus
+  onSave: () => void
+  saveDisabled?: boolean
   onUndo: () => void
   onRedo: () => void
   canUndo: boolean
   canRedo: boolean
 }
 
-// Floating pill bar, bottom-left, above the shape panel: zoom controls on the
-// left, a divider, then Liveblocks undo/redo on the right.
+// Floating pill bar, bottom-left, above the shape panel: zoom controls, a
+// divider, Liveblocks undo/redo, then a manual Save button with its status.
 export function CanvasControlBar<NodeType extends Node, EdgeType extends Edge>({
   reactFlowInstance,
+  saveStatus,
+  onSave,
+  saveDisabled = false,
   onUndo,
   onRedo,
   canUndo,
@@ -54,7 +61,57 @@ export function CanvasControlBar<NodeType extends Node, EdgeType extends Edge>({
       <ControlButton label="Redo" onClick={onRedo} disabled={!canRedo}>
         <Redo2 className="size-4" />
       </ControlButton>
+
+      <div className="mx-1 h-5 w-px bg-border" />
+
+      <SaveButton status={saveStatus} onClick={onSave} disabled={saveDisabled} />
     </div>
+  )
+}
+
+const SAVE_STATUS_COPY: Record<CanvasSaveStatus, string> = {
+  idle: "Save",
+  saving: "Saving…",
+  saved: "Saved",
+  error: "Save failed",
+}
+
+function SaveButton({
+  status,
+  onClick,
+  disabled,
+}: {
+  status: CanvasSaveStatus
+  onClick: () => void
+  disabled: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || status === "saving"}
+      aria-label={`Save canvas — ${SAVE_STATUS_COPY[status]}`}
+      title={SAVE_STATUS_COPY[status]}
+      className={cn(
+        "flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition-colors",
+        disabled || status === "saving"
+          ? "cursor-not-allowed opacity-40"
+          : status === "error"
+            ? "text-destructive hover:bg-destructive/10"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
+    >
+      {status === "saving" ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : status === "error" ? (
+        <AlertCircle className="size-4" />
+      ) : status === "saved" ? (
+        <Check className="size-4" />
+      ) : (
+        <Save className="size-4" />
+      )}
+      <span>{SAVE_STATUS_COPY[status]}</span>
+    </button>
   )
 }
 

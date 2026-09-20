@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, type DragEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from "react"
 import {
   Background,
   BackgroundVariant,
@@ -13,14 +13,17 @@ import {
   type NodeTypes,
 } from "@xyflow/react"
 import { useLiveblocksFlow } from "@liveblocks/react-flow"
-import { useCanRedo, useCanUndo, useHistory } from "@liveblocks/react"
+import { useCanRedo, useCanUndo, useHistory, useMyPresence } from "@liveblocks/react"
 
 import { CanvasControlBar } from "@/components/editor/canvas-control-bar"
+import { CanvasCursors } from "@/components/editor/canvas-cursors"
 import { CanvasNodeActionsContext, CanvasShapeNode } from "@/components/editor/canvas-shape-node"
 import { useCanvasTemplateImportRegistration } from "@/components/editor/canvas-template-import-context"
+import { PresenceAvatars } from "@/components/editor/presence-avatars"
 import { ShapePanel } from "@/components/editor/shape-panel"
 import type { CanvasTemplate } from "@/components/editor/starter-templates"
 import { createCanvasNodeId } from "@/lib/canvas-node-id"
+import { useCanvasSave } from "@/hooks/use-canvas-save"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import {
   DEFAULT_NODE_COLOR,
@@ -36,17 +39,21 @@ import "@liveblocks/react-flow/styles.css"
 
 const nodeTypes: NodeTypes = { canvasNode: CanvasShapeNode }
 
+interface CanvasProps {
+  roomId: string
+}
+
 // The shared architecture canvas: React Flow's view backed by Liveblocks
 // Storage, so nodes/edges stay in sync across everyone in the room.
-export function Canvas() {
+export function Canvas({ roomId }: CanvasProps) {
   return (
     <ReactFlowProvider>
-      <CanvasFlow />
+      <CanvasFlow roomId={roomId} />
     </ReactFlowProvider>
   )
 }
 
-function CanvasFlow() {
+function CanvasFlow({ roomId }: CanvasProps) {
   const reactFlowInstance = useReactFlow<CanvasNode, CanvasEdge>()
   const { screenToFlowPosition, getNode } = reactFlowInstance
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
@@ -59,6 +66,61 @@ function CanvasFlow() {
   const history = useHistory()
   const canUndo = useCanUndo()
   const canRedo = useCanRedo()
+
+  const [, updateMyPresence] = useMyPresence()
+
+  // Load a previously saved canvas exactly once, and only into an empty
+  // room — if the room already has nodes/edges (an active collaborative
+  // session, or a session that already loaded), never overwrite them.
+  const [initialLoadDone, setInitialLoadDone] = useState(
+    () => nodes.length > 0 || edges.length > 0
+  )
+  const hasCheckedInitialLoad = useRef(false)
+
+  useEffect(() => {
+    if (hasCheckedInitialLoad.current || initialLoadDone) return
+    hasCheckedInitialLoad.current = true
+
+    let cancelled = false
+
+    fetch(`/api/projects/${roomId}/canvas`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((snapshot: { nodes?: CanvasNode[]; edges?: CanvasEdge[] } | null) => {
+        if (cancelled || !snapshot) return
+
+        if (snapshot.nodes?.length) {
+          onNodesChange(snapshot.nodes.map((item): NodeChange<CanvasNode> => ({ type: "add", item })))
+        }
+        if (snapshot.edges?.length) {
+          onEdgesChange(snapshot.edges.map((item): EdgeChange<CanvasEdge> => ({ type: "add", item })))
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setInitialLoadDone(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLoadDone])
+
+  const { status: saveStatus, save: saveNow } = useCanvasSave({
+    projectId: roomId,
+    nodes,
+    edges,
+  })
+
+  const handlePaneMouseMove = useCallback(
+    (event: ReactMouseEvent) => {
+      updateMyPresence({ cursor: screenToFlowPosition({ x: event.clientX, y: event.clientY }) })
+    },
+    [screenToFlowPosition, updateMyPresence]
+  )
+
+  const handlePaneMouseLeave = useCallback(() => {
+    updateMyPresence({ cursor: null })
+  }, [updateMyPresence])
 
   useKeyboardShortcuts({
     reactFlowInstance,
@@ -173,13 +235,20 @@ function CanvasFlow() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onDelete={onDelete}
+          onPaneMouseMove={handlePaneMouseMove}
+          onPaneMouseLeave={handlePaneMouseLeave}
           connectionMode={ConnectionMode.Loose}
           fitView
         >
           <Background variant={BackgroundVariant.Dots} />
         </ReactFlow>
+        <CanvasCursors />
+        <PresenceAvatars />
         <CanvasControlBar
           reactFlowInstance={reactFlowInstance}
+          saveStatus={saveStatus}
+          onSave={saveNow}
+          saveDisabled={!initialLoadDone}
           onUndo={history.undo}
           onRedo={history.redo}
           canUndo={canUndo}

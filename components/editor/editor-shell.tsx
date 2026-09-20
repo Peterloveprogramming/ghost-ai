@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 
-import { AiChatPanel } from "@/components/editor/ai-chat-panel"
+import { AiSidebar } from "@/components/editor/ai-sidebar"
 import {
   CanvasTemplateImportProvider,
   type CanvasTemplateImportHandler,
@@ -102,7 +102,12 @@ export function EditorShell({
             )}
           >
             {children}
-            {isWorkspace ? <AiChatPanel open={isAiPanelOpen} /> : null}
+            {isWorkspace ? (
+              <AiSidebar
+                open={isAiPanelOpen}
+                onClose={() => setIsAiPanelOpen(false)}
+              />
+            ) : null}
           </div>
           {isWorkspace && activeRoomId ? (
             <ShareDialog
