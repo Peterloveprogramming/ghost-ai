@@ -51,6 +51,10 @@ export const DEFAULT_SHAPE_SIZES: Record<CanvasShape, CanvasShapeSize> = {
 // the shape panel.
 export const DEFAULT_NODE_COLOR = NODE_COLORS[0].fill
 
+// Floor applied to every shape's resize handles, regardless of shape — below
+// this a node's label has no room and handles become hard to grab.
+export const MIN_SHAPE_SIZE: CanvasShapeSize = { width: 60, height: 40 }
+
 // dataTransfer key the shape panel writes to and the canvas drop handler reads from.
 export const SHAPE_DRAG_MIME_TYPE = "application/x-ghost-ai-shape"
 
